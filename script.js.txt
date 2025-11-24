@@ -1,0 +1,131 @@
+const player = document.getElementById("player");
+const enemy = document.getElementById("enemy");
+const background = document.getElementById("background");
+const scoreDisplay = document.getElementById("score");
+const coinsContainer = document.getElementById("coins-container");
+const groundHeight = 50;
+
+let playerBottom = groundHeight;
+let velocityY = 0;
+let jumpCount = 0;
+let score = 0;
+let gameOver = false;
+let gameSpeed = 2.5;
+let bullets = [];
+let coins = [];
+let backgroundPosition = 0;
+
+// الأصوات
+const sounds = {
+    jump: new Audio("https://www.soundjay.com/buttons/sounds/button-16.mp3"),
+    coin: new Audio("https://www.soundjay.com/buttons/sounds/button-10.mp3"),
+    shoot: new Audio("https://www.soundjay.com/buttons/sounds/button-09.mp3"),
+    enemyHit: new Audio("https://www.soundjay.com/buttons/sounds/button-2.mp3"),
+    gameOver: new Audio("https://www.soundjay.com/buttons/sounds/button-3.mp3"),
+    evilLaugh: new Audio("https://www.soundjay.com/human/sounds/evil-laugh-1.mp3")
+};
+
+const keys = {};
+document.addEventListener('keydown', e => keys[e.code] = true);
+document.addEventListener('keyup', e => keys[e.code] = false);
+
+document.getElementById("start-game").addEventListener("click", startGame);
+
+function startGame(){
+    gameOver=false; score=0; scoreDisplay.textContent=score;
+    playerBottom=groundHeight; player.style.bottom=playerBottom+"px"; player.style.left="100px";
+    velocityY=0; jumpCount=0;
+    enemy.style.left="800px";
+    bullets.forEach(b=>b.remove()); bullets=[];
+    coins.forEach(c=>c.remove()); coins=[];
+    document.querySelector(".game-container").style.display="block";
+    document.querySelector(".menu-screen").style.display="none";
+    const go = document.querySelector(".game-over"); if(go) go.remove();
+    spawnCoins(); // spawn initial coins
+    requestAnimationFrame(gameLoop);
+}
+
+// القفز
+function jump(){ if(gameOver) return; if(jumpCount>=2) return; jumpCount++; velocityY=25; sounds.jump.currentTime=0; sounds.jump.play(); }
+
+// إطلاق النار
+function shoot(){ if(gameOver) return; const bullet=document.createElement("div"); bullet.className="bullet"; bullet.style.left=parseInt(player.style.left)+70+"px"; bullet.style.bottom=playerBottom+30+"px"; document.querySelector(".game-container").appendChild(bullet); bullets.push(bullet); sounds.shoot.currentTime=0; sounds.shoot.play(); }
+
+// spawn coins بشكل دائم
+function spawnCoins(){
+    const numCoins = 5 + Math.floor(Math.random()*3);
+    for(let i=0;i<numCoins;i++){
+        const coin = document.createElement("div");
+        coin.className="coin";
+        coin.style.left = (400 + i*70 + Math.random()*50) + "px";
+        coin.style.bottom = groundHeight + 50 + Math.random()*100 + "px";
+        coinsContainer.appendChild(coin);
+        coins.push(coin);
+    }
+}
+
+// تحديث الخلفية حسب المرحلة
+function updateBackgroundColor(){
+    if(score<100) background.style.filter="hue-rotate(0deg) brightness(1)";
+    else if(score>=100 && score<300) background.style.filter="hue-rotate(270deg) brightness(1.2)"; // أرجواني
+    else if(score>=300 && score<500) background.style.filter="hue-rotate(100deg) brightness(1.2)"; // أخضر
+    else if(score>=500 && score<800) background.style.filter="hue-rotate(200deg) brightness(1.2)"; // أزرق
+    else if(score>=800) background.style.filter="hue-rotate(0deg) brightness(1.5)"; // أحمر
+}
+
+// Game Over
+function gameOverEffect(){ if(gameOver) return; sounds.gameOver.currentTime=0; sounds.gameOver.play(); sounds.evilLaugh.currentTime=0; sounds.evilLaugh.play(); const container=document.querySelector(".game-container"); container.classList.add("shake"); setTimeout(()=>container.classList.remove("shake"),500); endGame();}
+function endGame(){ gameOver=true; const div=document.createElement("div"); div.className="game-over"; div.innerHTML=`Game Over! Score: ${score} <button id="play-again">Play Again</button>`; document.querySelector(".game-container").appendChild(div); document.getElementById("play-again").addEventListener("click", startGame);}
+
+// اللعبة الرئيسية
+function gameLoop(){
+    if(gameOver) return;
+
+    // حركة اللاعب + اتجاهه
+    if(keys["ArrowRight"]){ let newLeft=parseInt(player.style.left)+5; if(newLeft<700) player.style.left=newLeft+"px"; player.style.transform="scaleX(1)";}
+    if(keys["ArrowLeft"]){ let newLeft=parseInt(player.style.left)-5; if(newLeft>0) player.style.left=newLeft+"px"; player.style.transform="scaleX(-1)";}
+    if(keys["ArrowUp"]) jump();
+    if(keys["Space"]){ if(!keys["SpacePressed"]){ shoot(); keys["SpacePressed"]=true; } } else keys["SpacePressed"]=false;
+
+    // الجاذبية
+    if(playerBottom>groundHeight||velocityY>0){ velocityY-=1.5; playerBottom+=velocityY; if(playerBottom<groundHeight){playerBottom=groundHeight; velocityY=0; jumpCount=0;} player.style.bottom=playerBottom+"px";}
+
+    // تحريك الخلفية
+    backgroundPosition-=gameSpeed; if(backgroundPosition<=-800) backgroundPosition=0;
+    background.style.left=backgroundPosition+"px";
+    updateBackgroundColor();
+
+    // تحريك العدو
+    let enemyLeft=parseInt(enemy.style.left); enemyLeft-=gameSpeed; if(enemyLeft<-50) enemyLeft=800+Math.random()*200; enemy.style.left=enemyLeft+"px";
+    if(enemyLeft-parseInt(player.style.left)<200) enemy.style.transform="scaleX(1)"; else enemy.style.transform="scaleX(-1)";
+
+    // الرصاص يصطدم بالعدو
+    bullets.forEach((b,i)=>{ const bRect=b.getBoundingClientRect(); const eRect=enemy.getBoundingClientRect(); 
+        if(bRect.right>eRect.left && bRect.left<eRect.right && bRect.bottom>eRect.top && bRect.top<eRect.bottom){
+            score+=20; scoreDisplay.textContent=score;
+            b.remove(); bullets.splice(i,1);
+            enemy.style.left = 800 + Math.random()*200 + "px";
+            sounds.enemyHit.currentTime=0; sounds.enemyHit.play();
+        }
+        b.style.left=parseInt(b.style.left)+10+"px";
+        if(parseInt(b.style.left)>800){ b.remove(); bullets.splice(i,1);}
+    });
+
+    // جمع العملات دائمًا
+    coins.forEach(c=>{
+        c.style.left = parseInt(c.style.left)-gameSpeed + "px";
+        const pRect=player.getBoundingClientRect(); const cRect=c.getBoundingClientRect();
+        if(pRect.right>cRect.left && pRect.left<cRect.right && pRect.bottom>cRect.top && pRect.top<cRect.bottom){
+            score+=10; scoreDisplay.textContent=score; sounds.coin.currentTime=0; sounds.coin.play();
+            c.style.left = 800 + Math.random()*50 + "px"; // تعيد الظهور بدلاً من الاختفاء
+            c.style.bottom = groundHeight + 50 + Math.random()*100 + "px";
+        }
+    });
+
+    // اصطدام العدو
+    const eRect=enemy.getBoundingClientRect();
+    const pRect=player.getBoundingClientRect();
+    if(pRect.right>eRect.left && pRect.left<eRect.right && pRect.bottom>eRect.top && pRect.top<eRect.bottom){ gameOverEffect(); }
+
+    requestAnimationFrame(gameLoop);
+}

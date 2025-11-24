@@ -1,0 +1,21 @@
+<h1>BILLIONS NETWORK</h1>
+<div class="score-board">
+Score: <span id="score">0</span> BILL
+</div>
+
+<div class="menu-screen">
+  <div class="menu-bg"></div>
+  <h2 class="menu-title">BILLIONS NETWORK</h2>
+  <button id="start-game">PLAY</button>
+</div>
+
+<div class="game-container" style="display:none;">
+  <div id="background"></div>
+  <div id="ground"></div>
+  <div id="player"></div>
+  <div id="enemy"></div>
+  <div id="coins-container"></div>
+</div>
+<p class="instructions">
+Use ↑ to jump, ← → to move, Space to shoot
+</p>
